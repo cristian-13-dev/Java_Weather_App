@@ -60,12 +60,12 @@ public class Weather {
   }
 
   private static String getEuropeanAqiDescription(int aqi) {
-    if (aqi <= 20) return "Good 🟢";
-    if (aqi <= 40) return "Fair 🟡";
-    if (aqi <= 60) return "Moderate 🟠";
-    if (aqi <= 80) return "Poor 🔴";
-    if (aqi <= 100) return "Very poor 🟣";
-    return "Extremely poor ⚫";
+    if (aqi <= 20) return Text.printGreen("%d (Good)".formatted(aqi));
+    if (aqi <= 40) return Text.printYellow("%d (Fair)".formatted(aqi));
+    if (aqi <= 60) return Text.printOrange("%d (Moderate)".formatted(aqi));
+    if (aqi <= 80) return Text.printRed("%d (Poor)".formatted(aqi));
+    if (aqi <= 100) return Text.printPurple("%d (Very poor)".formatted(aqi));
+    return Text.printBlack("%d (Extremely poor)".formatted(aqi));
   }
 
   private WeatherDetails parseWeatherDetails(JSONObject weatherJson, JSONObject airQualityJson) {
