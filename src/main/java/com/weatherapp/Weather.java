@@ -31,18 +31,36 @@ public class Weather {
       return;
     }
 
-    String weatherUrl = buildUrl(coordinates);
-    String responseBody = fetchWeatherJson(weatherUrl);
+    String weatherUrl = buildWeatherUrl(coordinates);
+    String airQualityUrl = buildAirQualityUrl(coordinates);
 
-    JSONObject weatherJson = new JSONObject(responseBody);
+    String weatherResponseBody = fetchWeatherJson(weatherUrl);
+    String airQualityResponseBody = fetchWeatherJson(airQualityUrl);
 
-    WeatherDetails details = parseWeatherDetails(weatherJson);
+    JSONObject weatherJson = new JSONObject(weatherResponseBody);
+    JSONObject airQualityJson = new JSONObject(airQualityResponseBody);
+
+    WeatherDetails details = parseWeatherDetails(weatherJson, airQualityJson);
     printWeather(localTime, details);
   }
 
-  private static String buildUrl(Coordinates coordinates) {
-    return "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&hourly=temperature_2m,relative_humidity_2m,weather_code"
+  private String buildWeatherUrl(Coordinates coordinates) {
+    return "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&hourly=temperature_2m,relative_humidity_2m,weather_code,apparent_temperature,precipitation_probability,wind_speed_10m,wind_gusts_10m,uv_index&timezone=auto"
       .formatted(coordinates.latitude, coordinates.longitude);
+  }
+
+  private String buildAirQualityUrl(Coordinates coordinates) {
+    return "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%f&longitude=%f&hourly=european_aqi&timezone=auto"
+      .formatted(coordinates.latitude, coordinates.longitude);
+  }
+
+  private static String getEuropeanAqiDescription(int aqi) {
+    if (aqi <= 20) return "Good 🟢";
+    if (aqi <= 40) return "Fair 🟡";
+    if (aqi <= 60) return "Moderate 🟠";
+    if (aqi <= 80) return "Poor 🔴";
+    if (aqi <= 100) return "Very poor 🟣";
+    return "Extremely poor ⚫";
   }
 
   private String fetchWeatherJson(String weatherUrl) throws IOException, InterruptedException {
@@ -53,28 +71,44 @@ public class Weather {
     return weatherClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
   }
 
-  private WeatherDetails parseWeatherDetails(JSONObject weatherJson) {
+  private WeatherDetails parseWeatherDetails(JSONObject weatherJson, JSONObject airQualityJson) {
     JSONObject hourly = weatherJson.getJSONObject("hourly");
+    JSONObject airQualityHourly = airQualityJson.getJSONObject("hourly");
     int currentHour = LocalTime.now().getHour();
 
     return new WeatherDetails(
       hourly.getJSONArray("temperature_2m").getDouble(currentHour),
       hourly.getJSONArray("relative_humidity_2m").getInt(currentHour),
-      hourly.getJSONArray("weather_code").getInt(currentHour)
+      hourly.getJSONArray("weather_code").getInt(currentHour),
+      hourly.getJSONArray("apparent_temperature").getDouble(currentHour),
+      hourly.getJSONArray("precipitation_probability").getInt(currentHour),
+      hourly.getJSONArray("wind_speed_10m").getDouble(currentHour),
+      hourly.getJSONArray("wind_gusts_10m").getDouble(currentHour),
+      hourly.getJSONArray("uv_index").getDouble(currentHour),
+      airQualityHourly.getJSONArray("european_aqi").getInt(currentHour)
     );
   }
 
   private void printWeather(LocalTime localTime, WeatherDetails details) {
+    final String PURPLE = "\u001B[35m";
+    final String RESET = "\u001B[0m";
+    final String BOLD = "\u001B[1m";
+
     int hour = localTime.getHour();
     int minutes = localTime.getMinute();
     int seconds = localTime.getSecond();
 
-
     System.out.println("==============================");
-    System.out.printf("Time: %02d:%02d:%02d%n", hour, minutes, seconds);
-    System.out.println("Temperature(°C): " + details.temperature());
-    System.out.println("Humidity: " + details.humidity() + "%");
-    System.out.println("Weather code: " + getWeatherDescription(details.weatherCode()));
+    System.out.printf(BOLD + PURPLE + "Time:" + RESET + " %02d:%02d:%02d%n", hour, minutes, seconds);
+    System.out.println(BOLD + PURPLE + "Weather:" + RESET + " " + getWeatherDescription(details.weatherCode()));
+    System.out.println(BOLD + PURPLE + "Temperature:" + RESET + " " + details.temperature() + "°C");
+    System.out.println(BOLD + PURPLE + "Feels like:" + RESET + " " + details.apparentTemperature() + "°C");
+    System.out.println(BOLD + PURPLE + "Humidity:" + RESET + " " + details.humidity() + "%");
+    System.out.println(BOLD + PURPLE + "Rain chance:" + RESET + " " + details.precipitationProbability() + "%");
+    System.out.println(BOLD + PURPLE + "Wind:" + RESET + " " + details.windSpeed() + " km/h");
+    System.out.println(BOLD + PURPLE + "Gusts:" + RESET + " " + details.windGusts() + " km/h");
+    System.out.println(BOLD + PURPLE + "UV index:" + RESET + " " + details.uvIndex());
+    System.out.println(BOLD + PURPLE + "Air quality:" + RESET + " " + getEuropeanAqiDescription(details.europeanAqi()));
     System.out.println("==============================");
   }
 
