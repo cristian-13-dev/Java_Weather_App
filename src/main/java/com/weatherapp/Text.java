@@ -23,7 +23,7 @@ public class Text {
     return "\u001B[35m" + text + RESET;
   }
 
-  public static String printBlack(String text) {
-    return "\u001B[30m" + text + RESET;
+  public static String printGray(String text) {
+    return "\u001B[90m" + text + RESET;
   }
 }

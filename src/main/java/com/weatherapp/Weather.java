@@ -65,7 +65,7 @@ public class Weather {
     if (aqi <= 60) return Text.printOrange("%d (Moderate)".formatted(aqi));
     if (aqi <= 80) return Text.printRed("%d (Poor)".formatted(aqi));
     if (aqi <= 100) return Text.printPurple("%d (Very poor)".formatted(aqi));
-    return Text.printBlack("%d (Extremely poor)".formatted(aqi));
+    return Text.printGray("%d (Extremely poor)".formatted(aqi));
   }
 
   private WeatherDetails parseWeatherDetails(JSONObject weatherJson, JSONObject airQualityJson) {
