@@ -1,6 +1,5 @@
 package com.weatherapp;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -9,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.LocalTime;
+import java.util.concurrent.CompletableFuture;
 
 public class Weather {
   String city;
@@ -34,13 +34,18 @@ public class Weather {
     String weatherUrl = buildWeatherUrl(coordinates);
     String airQualityUrl = buildAirQualityUrl(coordinates);
 
-    String weatherResponseBody = fetchWeatherJson(weatherUrl);
-    String airQualityResponseBody = fetchWeatherJson(airQualityUrl);
+    CompletableFuture<String> weatherFuture = fetchJsonAsync(weatherUrl);
+    CompletableFuture<String> airQualityFuture = fetchJsonAsync(airQualityUrl);
 
-    JSONObject weatherJson = new JSONObject(weatherResponseBody);
-    JSONObject airQualityJson = new JSONObject(airQualityResponseBody);
+    WeatherDetails details = weatherFuture
+      .thenCombine(airQualityFuture, (weatherResponseBody, airQualityResponseBody) -> {
+        JSONObject weatherJson = new JSONObject(weatherResponseBody);
+        JSONObject airQualityJson = new JSONObject(airQualityResponseBody);
 
-    WeatherDetails details = parseWeatherDetails(weatherJson, airQualityJson);
+        return parseWeatherDetails(weatherJson, airQualityJson);
+      })
+      .join();
+
     printWeather(localTime, details);
   }
 
@@ -63,14 +68,6 @@ public class Weather {
     return "Extremely poor ⚫";
   }
 
-  private String fetchWeatherJson(String weatherUrl) throws IOException, InterruptedException {
-    HttpRequest request = HttpRequest.newBuilder()
-      .uri(URI.create(weatherUrl))
-      .build();
-
-    return weatherClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
-  }
-
   private WeatherDetails parseWeatherDetails(JSONObject weatherJson, JSONObject airQualityJson) {
     JSONObject hourly = weatherJson.getJSONObject("hourly");
     JSONObject airQualityHourly = airQualityJson.getJSONObject("hourly");
@@ -87,6 +84,14 @@ public class Weather {
       hourly.getJSONArray("uv_index").getDouble(currentHour),
       airQualityHourly.getJSONArray("european_aqi").getInt(currentHour)
     );
+  }
+
+  private CompletableFuture<String> fetchJsonAsync(String url) {
+    HttpRequest request = HttpRequest.newBuilder()
+      .uri(URI.create(url))
+      .build();
+
+    return weatherClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(HttpResponse::body);
   }
 
   private void printWeather(LocalTime localTime, WeatherDetails details) {
