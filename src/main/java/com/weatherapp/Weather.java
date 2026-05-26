@@ -37,16 +37,19 @@ public class Weather {
     CompletableFuture<String> weatherFuture = fetchJsonAsync(weatherUrl);
     CompletableFuture<String> airQualityFuture = fetchJsonAsync(airQualityUrl);
 
-    WeatherDetails details = weatherFuture
-      .thenCombine(airQualityFuture, (weatherResponseBody, airQualityResponseBody) -> {
-        JSONObject weatherJson = new JSONObject(weatherResponseBody);
-        JSONObject airQualityJson = new JSONObject(airQualityResponseBody);
+    try {
+      WeatherDetails details = weatherFuture
+        .thenCombine(airQualityFuture, (weatherResponseBody, airQualityResponseBody) -> {
+          JSONObject weatherJson = new JSONObject(weatherResponseBody);
+          JSONObject airQualityJson = new JSONObject(airQualityResponseBody);
 
-        return parseWeatherDetails(weatherJson, airQualityJson);
-      })
-      .join();
-
-    printWeather(localTime, details);
+          return parseWeatherDetails(weatherJson, airQualityJson);
+        })
+        .join();
+      printWeather(localTime, details);
+    } catch (java.util.concurrent.CompletionException e) {
+      System.out.println(Text.printRed("Weather service is temporarily unavailable :( \nPlease try again later."));
+    }
   }
 
   private String buildWeatherUrl(Coordinates coordinates) {

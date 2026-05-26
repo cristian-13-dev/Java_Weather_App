@@ -10,5 +10,4 @@ public record WeatherDetails(
   double windGusts,
   double uvIndex,
   int europeanAqi
-
 ) {}
